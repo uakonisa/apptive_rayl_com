@@ -92,8 +92,6 @@ class SaasUser(models.Model):
                 _logger.info("Error is....  : %r" % (res_up["message"]))
 
     def saas_createuser(self, partner_id, domain_name):
-        _logger.info("We are ready to start automation process")
-
         saas_configuration = self.env['saas.configuration'].sudo().search([], limit=1)
         if saas_configuration:
             url = 'https://' + saas_configuration.url
@@ -104,21 +102,14 @@ class SaasUser(models.Model):
             server_id = saas_configuration.server_id
             plan_id = saas_configuration.plan_id
 
-            partner = self.env['res.partner'].sudo().search([('id', '=', partner_id)], limit=1)
-            # if partner.bought_membership:
-            #     plan_id = 7
-            _logger.info(
-                "SaaS Configuration: url=%r, db=%r, username=%r, password=%r, invoice_product=%r, server_id=%r,"
-                " plan_id=%r " % (url, db, username, password, invoice_product, server_id, plan_id))
+            # partner = self.env['res.partner'].sudo().search([('id', '=', partner_id)], limit=1)
 
             common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(url))
             uid = common.authenticate(db, username, password, {})
             models = xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(url))
             partner = ''
-            contract_id = ''
             saas_client_domain = ''
             sale_obj = self.env['sale.order'].sudo().search([('partner_id', '=', partner_id)], limit=1)
-            # sale_obj = self.env['sale.order'].sudo().search([('id', '=', 374)], limit=1)
             db_template = 'template_rayl_tid_1'
 
             if sale_obj.amount_total == 59.95:
@@ -185,34 +176,18 @@ class SaasUser(models.Model):
                         for a_dict in saas_client_details:
                             saas_client_domain = (a_dict["database_name"])
                         if saas_client_domain:
+                            _logger.info("Completed RAYL USER is SYNC with client Domain...........   :")
                             partner.write({'is_saas_client': True,
                                            'saas_url': saas_client_domain if saas_client_domain else False})
                             _logger.info(
                                 "SaaS Contract is confirmed and SaaS Client is created in RAYL And Client URL is : %r" % (
                                     saas_client_domain))
-                            if sale_obj.amount_total == '59.95':
+                            if sale_obj.amount_total == 59.95:
                                 _logger.info("Sale amount is 59.95 and ready to sync rayl community user")
                                 self.synch_rayl_community_user(partner, domain_name)
                                 _logger.info("Completed RAYL USER is SYNC with Community...........   :")
 
                 except Exception as e:
-                    if not partner.is_saas_client:
-                        saas_client_details = models.execute_kw(db, uid, password,
-                                                                'saas.client', 'search_read',
-                                                                [[['saas_contract_id', '=', contract_id]]],
-                                                                {'fields': ['name', 'database_name'], 'limit': 1})
-                        for a_dict in saas_client_details:
-                            saas_client_domain = (a_dict["database_name"])
-                        if saas_client_domain:
-                            partner.write({'is_saas_client': True,
-                                           'saas_url': saas_client_domain if saas_client_domain else False})
-                            _logger.info(
-                                "Log From Exception: SaaS Contract is confirmed and SaaS Client is created in RAYL And "
-                                "Client URL is : %r" % (saas_client_domain))
-                            if sale_obj.amount_total == '59.95':
-                                _logger.info("Sale amount is 59.95 and ready to sync rayl community user")
-                                self.synch_rayl_community_user(partner, domain_name)
-                                _logger.info("Completed RAYL USER is SYNC with Community...........   :")
                     _logger.info(
                         "Exception Is : %r" % (e))
             else:
